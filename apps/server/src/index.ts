@@ -18,7 +18,8 @@ app.get('/api/health', (c) => c.json({ ok: true }));
 app.route('/api/pronote', pronote);
 
 const port = Number(process.env.PORT ?? 3001);
+const hostname = process.env.HOST ?? '0.0.0.0';
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`LaNote API listening on http://localhost:${info.port}`);
+serve({ fetch: app.fetch, port, hostname }, (info) => {
+  console.log(`LaNote API listening on http://${hostname}:${info.port}`);
 });
