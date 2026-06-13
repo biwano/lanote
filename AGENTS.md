@@ -137,9 +137,9 @@ Target algorithm (refine during implementation):
 - On logout: call PRONOTE logout if possible, delete `pronote_sessions` row.
 
 **Acceptance criteria**
-- [ ] Successful login displays learner name
-- [ ] Credentials persist across reload
-- [ ] Clear French error on invalid credentials
+- [x] Successful login displays learner name
+- [x] Credentials persist across reload
+- [x] Clear French error on invalid credentials
 
 ---
 

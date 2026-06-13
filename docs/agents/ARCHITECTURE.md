@@ -127,7 +127,7 @@ Do **not** persist `setKeepAlive` timers; call `setKeepAlive(true)` after restor
 
 | Route prefix | Responsibility |
 |--------------|----------------|
-| `/api/pronote/*` | Login, logout, proxy evaluations & *cahier de texte* |
+| `/api/pronote/*` | Login, logout, session status, proxy evaluations & *cahier de texte* |
 | `/api/activities/*` | Daily activity generation |
 | `/api/evaluations/*` | Transient multipart analysis (no file persistence) |
 | `/api/plans/*` | Plans & sessions CRUD |

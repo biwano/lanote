@@ -1,0 +1,23 @@
+{
+  "name": "@lanote/pronote-api",
+  "version": "3.1.0-lanote.0",
+  "description": "Vendored PRONOTE client (Merlode11 base) with session serialize/restore for LaNote",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "commonjs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Merlode11/pronote-api.git"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "https-proxy-agent": "^5.0.0",
+    "jsdom": "^16.5.2",
+    "node-forge": "1.3.1",
+    "pako": "^1.0.11",
+    "string-strip-html": "^8.2.9",
+    "uuid": "^8.3.0",
+    "xxhashjs": "^0.2.2"
+  }
+}

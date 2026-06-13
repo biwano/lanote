@@ -2,7 +2,8 @@
   "name": "lanote",
   "private": true,
   "scripts": {
-    "dev": "pnpm --parallel --filter @lanote/server --filter @lanote/web dev"
+    "dev": "pnpm --parallel --filter @lanote/server --filter @lanote/web dev",
+    "build": "pnpm --filter @lanote/shared build && pnpm --filter @lanote/server build && pnpm --filter @lanote/web build"
   },
   "packageManager": "pnpm@11.0.0"
 }
