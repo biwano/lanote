@@ -24,7 +24,7 @@ flowchart TB
 
     subgraph server [Hono API - Node.js]
         Auth[PRONOTE session proxy]
-        PronoteLib[pronote-api]
+        PronoteLib["@lanote/pronote-api"]
         AI[OpenRouter client]
         Schedule[Schedule aggregator]
     end
@@ -46,6 +46,57 @@ flowchart TB
     Vue -.->|no direct access| supabase
     Vue -.->|never OpenRouter key| OR
 ```
+
+---
+
+## Monorepo & tooling
+
+| Tool | Usage |
+|------|-------|
+| **pnpm** | Workspace package manager; run from repo root |
+| **Node.js 20+** | Server runtime (required for PRONOTE crypto) |
+
+Workspace packages: `@lanote/web`, `@lanote/server`, `@lanote/shared`, `@lanote/pronote-api`.
+
+---
+
+## PRONOTE client (`packages/pronote-api`)
+
+Vendored library — **not** consumed from npm. Initial import from [Merlode11/pronote-api](https://github.com/Merlode11/pronote-api) (MIT).
+
+### Why in-repo?
+
+Upstream npm names (`pronote-api`, `pronote-api-maintained`) are unavailable or unmaintained on the registry. Shipping the source in the monorepo keeps builds reproducible and allows LaNote-specific fixes without waiting on upstream releases.
+
+### What we keep from upstream
+
+- `loginStudent` / `loginParent`, CAS handlers, cipher layer, fetch modules (`evaluations`, `contents`, etc.)
+- TypeScript declarations (`index.d.ts`) where applicable
+- Error codes (e.g. `WRONG_CREDENTIALS`) for French error mapping in the server
+
+### What we omit
+
+- GraphQL server (`bin/server.js`, Polka routes) — LaNote uses Hono only
+- In-memory session map from upstream `src/server/auth.js` — replaced by Supabase
+
+### LaNote extensions (required)
+
+Upstream sessions live in process memory. For stateless serverless hosting, add:
+
+| Export | Purpose |
+|--------|---------|
+| `serializeSession(session)` | JSON-safe snapshot after login or PRONOTE call |
+| `restoreSession(data)` | Reconstruct `PronoteSession` before proxying |
+
+Minimum persisted fields (jsonb in `pronote_sessions.session_data`):
+
+- Session identity: `server`, `id`, `type`, `request`
+- Crypto: `aesKey`, `aesIV`, `publicKey`, `disableAES`, `disableCompress`
+- Context: `params`, `user` (for display name and account hash)
+
+Do **not** persist `setKeepAlive` timers; call `setKeepAlive(true)` after restore if long-lived sessions are desired, or rely on `expires_at` + re-login.
+
+`apps/server` is the only consumer.
 
 ---
 
@@ -72,7 +123,7 @@ flowchart TB
 
 **Runtime**: Node.js 20+, TypeScript, Hono.
 
-**Dependencies**: `pronote-api`, `@supabase/supabase-js` (service role only), OpenRouter HTTP client.
+**Dependencies**: `@lanote/pronote-api` (workspace), `@supabase/supabase-js` (service role only), OpenRouter HTTP client.
 
 | Route prefix | Responsibility |
 |--------------|----------------|
@@ -84,7 +135,7 @@ flowchart TB
 | `/api/learners/*` | Time budget, profile |
 | `/api/schedule/*` | Step 8 aggregation |
 
-**PRONOTE sessions**: stored in Supabase table `pronote_sessions` (not in-memory). On each API request the backend loads `session_data` (jsonb), restores the `pronote-api` client, and writes back if the session mutated. Rows have `expires_at`; expired rows are rejected and deleted. Works on stateless hosts (e.g. Vercel serverless).
+**PRONOTE sessions**: stored in Supabase table `pronote_sessions` (not in-memory). On each API request the backend loads `session_data` (jsonb), calls `restoreSession()`, proxies PRONOTE, then `serializeSession()` and `UPDATE` if the snapshot changed (e.g. `request` counter). Rows have `expires_at`; expired rows are rejected and deleted. Works on stateless hosts (e.g. Vercel serverless).
 
 **Session token**: the client receives a signed token (HMAC/JWT using `PRONOTE_SESSION_SECRET`) containing the `pronote_sessions.id`. The browser never sees `session_data`.
 
@@ -108,13 +159,13 @@ No Supabase Storage. Evaluation images/PDFs are processed in memory and discarde
 |--------|---------|
 | `id` | UUID; referenced by signed client `sessionToken` |
 | `learner_id` | FK → `learners` |
-| `session_data` | Serialized `pronote-api` session (jsonb); restored server-side per request |
+| `session_data` | Output of `serializeSession()` (jsonb); restored via `restoreSession()` per request |
 | `expires_at` | TTL; reject and purge stale sessions |
 | `updated_at` | Last PRONOTE interaction (for session refresh) |
 
 **Lifecycle**
 1. `POST /api/pronote/login` → insert row → return signed token.
-2. Authenticated requests → verify token → `SELECT` row → hydrate `pronote-api` → proxy → `UPDATE` if needed.
+2. Authenticated requests → verify token → `SELECT` row → `restoreSession()` → proxy → `UPDATE` if serialized snapshot changed.
 3. `POST /api/pronote/logout` → `DELETE` row.
 
 **Tables**: see [AGENTS.md](../../AGENTS.md) for full data model.
@@ -161,7 +212,7 @@ Evaluation copy (image/PDF) → backend → OpenRouter → **discarded** (not st
 
 PRONOTE sessions in Supabase make the API **stateless** — no Redis or long-lived server process required.
 
-**Vercel notes**: use Node.js runtime (not Edge) for `pronote-api` crypto; watch function timeout on AI analysis routes; request body limit applies to evaluation uploads.
+**Vercel notes**: use Node.js runtime (not Edge) for `@lanote/pronote-api` crypto; watch function timeout on AI analysis routes; request body limit applies to evaluation uploads.
 
 The deployment must have outbound access to PRONOTE + OpenRouter.
 
@@ -170,11 +221,13 @@ The deployment must have outbound access to PRONOTE + OpenRouter.
 ## Local development
 
 ```bash
-# Terminal 1 — API
-cd apps/server && npm run dev   # e.g. port 3001
+# From repo root
+pnpm install
+pnpm dev                           # API + web concurrently
 
-# Terminal 2 — Web
-cd apps/web && npm run dev      # e.g. port 5173, proxy /api → 3001
+# Or run individually:
+pnpm --filter @lanote/server dev   # e.g. port 3001
+pnpm --filter @lanote/web dev      # e.g. port 5173, proxy /api → 3001
 ```
 
 Supabase: local CLI or shared dev project.

@@ -1,0 +1,8 @@
+{
+  "name": "lanote",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @lanote/server --filter @lanote/web dev"
+  },
+  "packageManager": "pnpm@11.0.0"
+}

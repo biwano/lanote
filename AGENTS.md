@@ -33,13 +33,28 @@ The learner views their PRONOTE evaluations and *cahier de texte* (course report
 | UI state | **Pinia** | Session, preferences, short-lived cache |
 | Routing | **Vue Router** | Step / view navigation |
 | Backend | **Hono** (Node.js, TypeScript) | PRONOTE proxy, AI, business logic, secrets |
-| PRONOTE | **[pronote-api](https://github.com/EduWireApps/pronote-api)** (npm) | Auth and requests to the school's PRONOTE instance |
+| PRONOTE | **`@lanote/pronote-api`** (`packages/pronote-api`) | Auth and requests to the school's PRONOTE instance — **vendored in-repo** |
+| Package manager | **pnpm** (workspaces) | Monorepo installs and scripts |
 | Database | **Supabase** (PostgreSQL only) | PRONOTE proxy sessions, plans, analyses, feedback, budgets — **backend only** |
 | AI | **OpenRouter** | Work analysis, activity and plan generation |
 
+### PRONOTE client (`@lanote/pronote-api`)
+
+The upstream npm packages (`pronote-api`, `pronote-api-maintained`, etc.) are **no longer reliably published**. LaNote vendors its own client in `packages/pronote-api`, initially copied from **[Merlode11/pronote-api](https://github.com/Merlode11/pronote-api)** (MIT, fork of EduWireApps/Litarvan).
+
+| Topic | Decision |
+|-------|----------|
+| **Source** | Import upstream `src/` + entry points; keep attribution and license |
+| **Scope** | Library only (no GraphQL server / `bin/` in production path) |
+| **LaNote extensions** | `serializeSession` / `restoreSession` so `pronote_sessions.session_data` can hydrate a client on each API request (upstream keeps sessions in memory only) |
+| **Usage** | `apps/server` imports `@lanote/pronote-api`; the browser **never** imports it |
+| **CAS / ENT** | Optional fourth login argument (`cas`) for regional ENT accounts — same as upstream |
+
+See [docs/agents/ARCHITECTURE.md](docs/agents/ARCHITECTURE.md) for session lifecycle and serialization fields.
+
 ### Why a server?
 
-- The PRONOTE protocol ([INDEX ÉDUCATION Service Rest](https://www.index-education.com/fr/serviceRestHP.php#)) is not a documented public REST API; community libraries (`pronote-api`, `pronotepy`) reverse-engineer the internal protocol and require a server runtime (crypto, sessions, CORS).
+- The PRONOTE protocol ([INDEX ÉDUCATION Service Rest](https://www.index-education.com/fr/serviceRestHP.php#)) is not a documented public REST API; community libraries reverse-engineer the internal protocol and require a server runtime (crypto, sessions, CORS). LaNote uses the vendored `@lanote/pronote-api` package (based on [Merlode11/pronote-api](https://github.com/Merlode11/pronote-api)).
 - The **OpenRouter** API key must never be exposed to the browser.
 - **Supabase** is accessed **only by the backend** using the **service role key** — the frontend never connects to Supabase (no `@supabase/supabase-js`, no anon key).
 - Evaluation copies are sent to the backend API for **transient AI analysis only** — files are **not** persisted.
@@ -117,9 +132,9 @@ Target algorithm (refine during implementation):
 **Storage**: `localStorage` key `lanote.pronote.credentials` — **never** Supabase. Stable client UUID for reconnections.
 
 **Backend**: `POST /api/pronote/login`, `POST /api/pronote/logout`
-- On login: authenticate via `pronote-api`, upsert `learners`, persist serialized session in `pronote_sessions`, return signed `sessionToken`.
-- On each request: verify `sessionToken`, load session from Supabase, restore `pronote-api` client, update row after PRONOTE calls if state changed.
-- On logout: delete `pronote_sessions` row.
+- On login: authenticate via `@lanote/pronote-api` (`loginStudent`), upsert `learners`, persist `serializeSession()` output in `pronote_sessions`, return signed `sessionToken`.
+- On each request: verify `sessionToken`, load session from Supabase, `restoreSession()` → proxy PRONOTE → `UPDATE` row if session mutated (e.g. `request` counter).
+- On logout: call PRONOTE logout if possible, delete `pronote_sessions` row.
 
 **Acceptance criteria**
 - [ ] Successful login displays learner name
@@ -233,15 +248,29 @@ Target algorithm (refine during implementation):
 ```
 lanote/
 ├── AGENTS.md                  # product spec (this file)
+├── pnpm-workspace.yaml
+├── package.json               # root scripts (pnpm -r …)
 ├── docs/agents/
 │   └── ARCHITECTURE.md        # technical architecture
 ├── apps/
 │   ├── web/                   # Vue 3 + Vite (French UI)
-│   └── server/                # Hono + pronote-api + OpenRouter
+│   └── server/                # Hono + @lanote/pronote-api + OpenRouter
 ├── packages/
+│   ├── pronote-api/           # Vendored PRONOTE client (Merlode11 base + serialize/restore)
 │   └── shared/                # Shared TS types (DTOs, PRONOTE ids)
 └── supabase/
     └── migrations/
+```
+
+**Install & dev** (from repo root):
+
+```bash
+pnpm install
+pnpm dev                         # API + web concurrently (ports 3001 + 5173)
+
+# Or run individually:
+pnpm --filter @lanote/server dev   # API, e.g. port 3001
+pnpm --filter @lanote/web dev      # Vite, e.g. port 5173, proxy /api → 3001
 ```
 
 ---
@@ -271,6 +300,7 @@ lanote/
 ## References
 
 - [PRONOTE Campus — API Service Rest (INDEX ÉDUCATION)](https://www.index-education.com/fr/serviceRestHP.php#)
-- [pronote-api (Node.js / GraphQL)](https://github.com/EduWireApps/pronote-api)
+- [Merlode11/pronote-api](https://github.com/Merlode11/pronote-api) — upstream base for `@lanote/pronote-api` (npm packages unavailable)
+- [EduWireApps/pronote-api](https://github.com/EduWireApps/pronote-api) — original fork lineage
 - [pronotepy (Python)](https://pronotepy.readthedocs.io/)
 - [OpenRouter](https://openrouter.ai/)
