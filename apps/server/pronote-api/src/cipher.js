@@ -102,7 +102,7 @@ function generateIV()
 
 function getUUID(session, iv)
 {
-    if (session.disableAES) {
+    if (session.httpMode || session.disableAES) {
         return forge.util.encode64(iv.bytes());
     }
     return forge.util.encode64(session.publicKey.encrypt(iv.bytes()));

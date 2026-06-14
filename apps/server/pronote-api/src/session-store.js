@@ -22,6 +22,8 @@ function serializeSession(session) {
         id: session.id,
         type: session.type.name,
         request: session.request,
+        appKey: session.appKey,
+        httpMode: session.httpMode,
         disableAES: session.disableAES,
         disableCompress: session.disableCompress,
         aesKey: bufferToBase64(session.aesKey),
@@ -45,6 +47,12 @@ function restoreSession(data) {
     });
 
     session.request = data.request;
+    if (data.appKey !== undefined) {
+        session.appKey = data.appKey;
+    }
+    if (data.httpMode !== undefined) {
+        session.httpMode = data.httpMode;
+    }
     if (data.aesKey) {
         session.aesKey = base64ToBuffer(data.aesKey);
     }

@@ -6,7 +6,7 @@ async function getId(session, username, fromCas)
     const { donnees: id } = await request(session, 'Identification', {
         donnees: {
             genreConnexion: 0,
-            genreEspace: session.type.id,
+            genreEspace: session.appKey !== undefined ? session.appKey : session.type.id,
             identifiant: username,
             pourENT: fromCas,
             enConnexionAuto: false,
@@ -30,7 +30,7 @@ async function getAuthKey(session, challenge, key)
         donnees: {
             connexion: 0,
             challenge: cipher(session, challenge, { key }),
-            espace: session.type.id
+            espace: session.appKey !== undefined ? session.appKey : session.type.id
         }
     });
 

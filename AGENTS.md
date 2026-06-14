@@ -47,7 +47,7 @@ The upstream npm packages (`pronote-api`, `pronote-api-maintained`, etc.) are **
 |-------|----------|
 | **Source** | Import upstream `src/` + entry points; keep attribution and license |
 | **Scope** | Library only (no GraphQL server / `bin/` in production path) |
-| **LaNote extensions** | `serializeSession` / `restoreSession` so `pronote_sessions.session_data` can hydrate a client on each API request (upstream keeps sessions in memory only) |
+| **LaNote extensions** | `serializeSession` / `restoreSession` so `pronote_sessions.session_data` can hydrate a client on each API request (upstream keeps sessions in memory only); **PRONOTE 2025+ protocol** (`Start({a,d,…})`, `fd=1` login page, new `appelfonction` payload shape) |
 | **Usage** | Loaded by `apps/server` at runtime; the browser **never** imports it |
 | **CAS / ENT** | Optional fourth login argument (`cas`) for regional ENT accounts — same as upstream |
 
@@ -272,6 +272,8 @@ pnpm dev                         # API + web concurrently (ports 3001 + 5173)
 pnpm --filter @lanote/server dev   # API, e.g. port 3001
 pnpm --filter @lanote/web dev      # Vite, e.g. port 5173, proxy /api → 3001
 ```
+
+**PRONOTE demo instance** (manual testing): `https://demo.index-education.net/pronote/` — identifiant `demonstration`, mot de passe `pronotevs`, ENT/CAS laisser vide (`none`).
 
 ---
 

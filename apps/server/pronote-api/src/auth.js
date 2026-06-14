@@ -13,6 +13,20 @@ function loginFor(type)
     return (url, username, password, cas = 'none') => login(url, username, password, cas, getAccountType(type));
 }
 
+function applyStartToSession(session, start)
+{
+    if (start.a !== undefined) {
+        session.appKey = parseInt(start.a, 10);
+        session.httpMode = start.d === true || start.d === 'true' || start.http === true || start.http === 'true';
+        session.disableAES = !start.CrA;
+        session.disableCompress = !start.CoA;
+        return;
+    }
+
+    session.disableAES = !!start.sCrA;
+    session.disableCompress = !!start.sCoA;
+}
+
 async function login(url, username, password, cas, account)
 {
     const server = getServer(url);
@@ -23,9 +37,11 @@ async function login(url, username, password, cas, account)
 
         type: account,
 
-        disableAES: !!start.sCrA,
-        disableCompress: !!start.sCoA
-    })
+        disableAES: false,
+        disableCompress: false,
+    });
+
+    applyStartToSession(session, start);
 
     session.params = await getParams(session);
     if (!session.params) {
@@ -89,5 +105,6 @@ module.exports = {
     loginParent: loginFor('parent'),
 
     getStart,
-    auth
+    auth,
+    applyStartToSession,
 };

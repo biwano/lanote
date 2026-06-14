@@ -99,6 +99,8 @@ Upstream sessions live in process memory. For stateless serverless hosting, add:
 | `serializeSession(session)` | JSON-safe snapshot after login or PRONOTE call |
 | `restoreSession(data)` | Reconstruct `PronoteSession` before proxying |
 
+**PRONOTE 2025+ protocol** (e.g. demo site, recent school instances): login HTML uses `?fd=1&login=true` and `Start({h, a, d, …})`. API calls use `appelfonction/{a}/{h}/{order}` with body `{ session, no, id, dataSec }` instead of the legacy `{ nom, numeroOrdre, donneesSec }` shape. The vendored client detects `Start.a` and switches automatically; `session_data` must persist `appKey` and `httpMode`.
+
 Minimum persisted fields (jsonb in `pronote_sessions.session_data`):
 
 - Session identity: `server`, `id`, `type`, `request`
@@ -242,3 +244,5 @@ pnpm --filter @lanote/web dev      # e.g. port 5173, proxy /api → 3001
 ```
 
 Supabase: local CLI or shared dev project.
+
+**PRONOTE demo instance** (manual testing): `https://demo.index-education.net/pronote/` — username `demonstration`, password `pronotevs`, CAS `none`.
