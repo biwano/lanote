@@ -24,7 +24,7 @@ flowchart TB
 
     subgraph server [Hono API - Node.js]
         Auth[PRONOTE session proxy]
-        PronoteLib["@lanote/pronote-api"]
+        PronoteLib["apps/server/pronote-api"]
         AI[OpenRouter client]
         Schedule[Schedule aggregator]
     end
@@ -56,11 +56,22 @@ flowchart TB
 | **pnpm** | Workspace package manager; run from repo root |
 | **Node.js 20+** | Server runtime (required for PRONOTE crypto) |
 
-Workspace packages: `@lanote/web`, `@lanote/server`, `@lanote/shared`, `@lanote/pronote-api`.
+Workspace packages: `@lanote/web` and `@lanote/server` only. Shared code lives in plain folders (`apps/shared/`, `apps/server/pronote-api/`) — not separate npm packages.
 
 ---
 
-## PRONOTE client (`packages/pronote-api`)
+## Shared types (`apps/shared/`)
+
+Single `index.ts` with API DTOs and `localStorage` key constants. Imported directly by path:
+
+- `apps/web` — runtime imports (bundled by Vite)
+- `apps/server` — type-only imports (`import type`)
+
+No `package.json`, no build step.
+
+---
+
+## PRONOTE client (`apps/server/pronote-api/`)
 
 Vendored library — **not** consumed from npm. Initial import from [Merlode11/pronote-api](https://github.com/Merlode11/pronote-api) (MIT).
 
@@ -123,7 +134,7 @@ Do **not** persist `setKeepAlive` timers; call `setKeepAlive(true)` after restor
 
 **Runtime**: Node.js 20+, TypeScript, Hono.
 
-**Dependencies**: `@lanote/pronote-api` (workspace), `@supabase/supabase-js` (service role only), OpenRouter HTTP client.
+**Dependencies**: vendored `pronote-api/` folder (loaded at runtime), `@supabase/supabase-js` (service role only), OpenRouter HTTP client. PRONOTE client npm deps (axios, jsdom, etc.) are declared on `@lanote/server`.
 
 | Route prefix | Responsibility |
 |--------------|----------------|
@@ -212,7 +223,7 @@ Evaluation copy (image/PDF) → backend → OpenRouter → **discarded** (not st
 
 PRONOTE sessions in Supabase make the API **stateless** — no Redis or long-lived server process required.
 
-**Vercel notes**: use Node.js runtime (not Edge) for `@lanote/pronote-api` crypto; watch function timeout on AI analysis routes; request body limit applies to evaluation uploads.
+**Vercel notes**: use Node.js runtime (not Edge) for PRONOTE crypto; watch function timeout on AI analysis routes; request body limit applies to evaluation uploads.
 
 The deployment must have outbound access to PRONOTE + OpenRouter.
 

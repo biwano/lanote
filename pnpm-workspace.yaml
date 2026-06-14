@@ -1,5 +1,5 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - 'apps/web'
+  - 'apps/server'
 allowBuilds:
   esbuild: true

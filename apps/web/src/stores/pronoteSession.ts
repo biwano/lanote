@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import {
   PRONOTE_SESSION_KEY,
   type PronoteLoginRequest,
-} from '@lanote/shared';
+} from '../../../shared/index';
 import {
   fetchPronoteSession,
   loginToPronote,

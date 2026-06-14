@@ -3,7 +3,7 @@ import type {
   PronoteLoginRequest,
   PronoteLoginResponse,
   PronoteSessionInfo,
-} from '@lanote/shared';
+} from '../../../shared/index';
 
 async function parseJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;

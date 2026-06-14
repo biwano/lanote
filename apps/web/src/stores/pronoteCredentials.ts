@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import {
   PRONOTE_CREDENTIALS_KEY,
   type PronoteCredentials,
-} from '@lanote/shared';
+} from '../../../shared/index';
 
 function readStoredCredentials(): PronoteCredentials | null {
   const raw = localStorage.getItem(PRONOTE_CREDENTIALS_KEY);

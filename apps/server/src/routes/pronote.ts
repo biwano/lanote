@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { PronoteLoginRequest, PronoteLoginResponse, PronoteSessionInfo } from '@lanote/shared';
+import type { PronoteLoginRequest, PronoteLoginResponse, PronoteSessionInfo } from '../../../shared/index.js';
 import { getSupabase } from '../lib/supabase.js';
 import {
   getDisplayName,

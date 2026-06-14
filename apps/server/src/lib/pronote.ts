@@ -1,13 +1,15 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-
+const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const {
   loginStudent,
   serializeSession,
   restoreSession,
   errors,
-} = require('@lanote/pronote-api') as typeof import('@lanote/pronote-api');
+} = require(path.join(serverRoot, 'pronote-api/index.js')) as typeof import('../types/pronote-api.js');
 
 export { loginStudent, serializeSession, restoreSession, errors };
 
