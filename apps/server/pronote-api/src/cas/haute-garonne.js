@@ -1,11 +1,10 @@
-const wayf = require('./generics/kdecole-wayf');
+const casEduconnect = require('../sso/cas-educonnect');
 
-module.exports = (url, account, username, password) => wayf({
+module.exports = (url, account, username, password) => casEduconnect({
     url,
     account,
     username,
     password,
-
     casUrl: 'cas.ecollege.haute-garonne.fr',
-    idp: 'ATS_parent_eleve'
+    idp: 'EDU_parent_eleve',
 });

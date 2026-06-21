@@ -6,6 +6,9 @@ const UNKNOWN_ACCOUNT = error(4, typeAccount => `Unknown account type '${typeAcc
 const SESSION_EXPIRED = error(5, 'Session has expired due to inactivity or error');
 const RATE_LIMITED = error(6, 'You are being rate limited because of too many failed requests');
 const CLOSED = error(7, 'The instance is closed, try again later');
+const INVALID_START = error(8, 'Invalid or expired Start payload');
+/** CAS Ticket Granting Cookie missing, expired, or rejected — user must re-login in browser. */
+const INVALID_TGC = error(9, 'Invalid or expired CAS TGC cookie');
 
 function error(code, message)
 {
@@ -26,5 +29,7 @@ module.exports = {
     UNKNOWN_ACCOUNT,
     SESSION_EXPIRED,
     RATE_LIMITED,
-    CLOSED
+    CLOSED,
+    INVALID_START,
+    INVALID_TGC
 };

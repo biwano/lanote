@@ -1,5 +1,6 @@
 const { cipher, decipher } = require('./cipher');
 const errors = require('./errors');
+const debug = require('./debug');
 const http = require('./http');
 
 function usesNewProtocol(session) {
@@ -14,12 +15,13 @@ function unwrapContent(content) {
     return Object.keys(content).length ? content : null;
 }
 
-function throwIfErreur(result) {
+function throwIfErreur(result, name) {
     if (!result.Erreur) {
         return;
     }
 
     const { Titre, Message } = result.Erreur;
+    debug.fail('pronote.request', errors.PRONOTE.drop({ title: Titre, message: Message }), { name, Titre, Message });
 
     if (Titre.startsWith('La page a expiré !')) {
         throw errors.SESSION_EXPIRED.drop();
@@ -82,7 +84,7 @@ async function request(session, name, content = {})
             },
         });
 
-        throwIfErreur(result);
+        throwIfErreur(result, name);
         return parseNewProtocolResponse(session, result);
     }
 
@@ -102,7 +104,7 @@ async function request(session, name, content = {})
         },
     });
 
-    throwIfErreur(result);
+    throwIfErreur(result, name);
     return parseLegacyResponse(session, result);
 }
 

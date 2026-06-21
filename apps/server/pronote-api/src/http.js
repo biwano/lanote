@@ -1,14 +1,16 @@
-const axioRequest = require('./axioRequest')
+const axioRequest = require('./axioRequest');
+const debug = require('./debug');
 
-async function http({ url, body, data, method = 'GET', binary, jar = null, followRedirects = true }) {
+async function http({ url, body, data, method = 'GET', binary, jar = null, followRedirects = true, headers = null }) {
     const response = await axioRequest({
         url,
         body,
         data,
         method,
         binary,
-        jar
-    })
+        jar,
+        headers,
+    });
 
     if (response.headers.location && followRedirects) {
         let location = response.headers.location;
@@ -16,13 +18,16 @@ async function http({ url, body, data, method = 'GET', binary, jar = null, follo
             location = getOrigin(url) + location;
         }
 
+        debug.step('http.redirect', { from: url, to: location });
+
         if (followRedirects === 'get') {
             return location;
         }
 
         return await http({
             url: location,
-            jar
+            jar,
+            headers,
         });
     }
     return response.data;

@@ -1,4 +1,4 @@
-const { loginStudent, loginParent } = require('./src/auth');
+const { loginStudent, loginParent, loginStudentFromStart, loginParentFromStart, loginStudentFromTgc, loginParentFromTgc } = require('./src/auth');
 const { list: casList, getCAS } = require('./src/cas');
 const geo = require('./src/geo');
 const errors = require('./src/errors');
@@ -39,6 +39,10 @@ module.exports = {
     login: loginStudent,
     loginParent,
     loginStudent,
+    loginStudentFromStart,
+    loginStudentFromTgc,
+    loginParentFromStart,
+    loginParentFromTgc,
     casList,
     getCAS,
     geo,

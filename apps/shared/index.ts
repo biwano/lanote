@@ -1,17 +1,14 @@
 export interface PronoteCredentials {
   clientId: string;
   url: string;
-  username: string;
-  password: string;
-  cas?: string;
+  /** CAS cookies from browser DevTools (TGC required; JSESSIONID and others optional). */
+  tgc: string;
 }
 
 export interface PronoteLoginRequest {
   clientId: string;
   url: string;
-  username: string;
-  password: string;
-  cas?: string;
+  tgc: string;
 }
 
 export interface PronoteLoginResponse {

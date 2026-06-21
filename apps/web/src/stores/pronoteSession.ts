@@ -67,12 +67,13 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
 
     buildLoginRequest(): PronoteLoginRequest {
       const credentials = usePronoteCredentialsStore();
+      if (!credentials.clientId) {
+        credentials.clientId = crypto.randomUUID();
+      }
       return {
         clientId: credentials.clientId,
         url: credentials.url.trim(),
-        username: credentials.username.trim(),
-        password: credentials.password,
-        cas: credentials.cas.trim() || undefined,
+        tgc: credentials.tgc.trim(),
       };
     },
 
@@ -121,7 +122,7 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
       const credentials = usePronoteCredentialsStore();
       credentials.loadFromStorage();
 
-      if (!credentials.url || !credentials.username || !credentials.password) {
+      if (!credentials.url?.trim() || !credentials.tgc?.trim()) {
         return;
       }
 

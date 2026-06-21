@@ -1,23 +1,34 @@
 const axios = require('axios');
 const HttpsProxyAgent = require('https-proxy-agent');
+const debug = require('./debug');
 
-async function axioRequest({ url, body, data, method = 'GET', binary, jar = null }) {
-    let userAgent = 'Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0';
+async function axioRequest({ url, body, data, method = 'GET', binary, jar = null, headers = null }) {
+    let userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     if (url.includes('teleservices.ac-nancy-metz.fr')) {
         userAgent = 'FuckTheUselessProtection/1.0';
     }
 
     const params = encodeParams(data);
+    const requestHeaders = {
+        'User-Agent': userAgent,
+        ...(headers || {}),
+    };
+
+    if (body !== undefined) {
+        requestHeaders['Content-Type'] = 'application/json';
+    } else if (params !== '' && method.toUpperCase() !== 'GET') {
+        requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+    }
+
+    const cookie = encodeCookies(jar, url);
+    if (cookie) {
+        requestHeaders.Cookie = cookie;
+    }
+
     const content = {
         url,
         method: method.toLowerCase(),
-        headers: {
-            'User-Agent': userAgent,
-            'Content-Type': body !== undefined
-                ? 'application/json'
-                : (params !== '' && method !== 'GET' ? 'application/x-www-form-urlencoded' : ''),
-            'Cookie': encodeCookies(jar)
-        },
+        headers: requestHeaders,
         maxRedirects: 0,
         validateStatus(status) {
             return status === 401 || (status >= 200 && status <= 302)
@@ -41,6 +52,10 @@ async function axioRequest({ url, body, data, method = 'GET', binary, jar = null
     }
     const response = await axios(content)
 
+    debug.http(method.toUpperCase(), content.url, response.status, {
+        redirect: response.headers.location ? redactLocation(response.headers.location) : undefined,
+    });
+
     if (response.headers['set-cookie'] && jar !== null) {
         await updateCookies(response, jar, url);
     }
@@ -48,17 +63,59 @@ async function axioRequest({ url, body, data, method = 'GET', binary, jar = null
     return response;
 }
 
-function updateCookies(response, jar, url) {
-    return new Promise((accept, reject) => {
-        response.headers['set-cookie'].forEach(cookie => {
-            jar.setCookie(cookie, url, err => (err ? reject(err) : accept()));
-        });
+function normalizeSetCookieHeaders(headers) {
+    const raw = headers['set-cookie'];
+    if (!raw) {
+        return [];
+    }
+    return Array.isArray(raw) ? raw : [raw];
+}
+
+function sanitizeSetCookie(cookie) {
+    return cookie
+        .replace(/;\s*Domain=""\s*/gi, '; ')
+        .replace(/;\s*Domain=''\s*/gi, '; ')
+        .trim();
+}
+
+function setCookieAsync(jar, cookie, url) {
+    return new Promise((resolve, reject) => {
+        jar.setCookie(cookie, url, err => (err ? reject(err) : resolve()));
     });
 }
 
-function encodeCookies(jar) {
+async function updateCookies(response, jar, url) {
+    const cookieUrl = response.request?.res?.responseUrl || url;
+    const cookies = normalizeSetCookieHeaders(response.headers);
+
+    for (const raw of cookies) {
+        if (!raw) {
+            continue;
+        }
+
+        const cookie = sanitizeSetCookie(raw);
+        if (!cookie) {
+            continue;
+        }
+
+        try {
+            await setCookieAsync(jar, cookie, cookieUrl);
+        } catch (err) {
+            debug.step('http.setCookie.skip', {
+                reason: err.message,
+                cookie: cookie.slice(0, 80),
+            });
+        }
+    }
+}
+
+function encodeCookies(jar, url) {
     if (!jar) {
         return '';
+    }
+
+    if (url && typeof jar.getCookieStringSync === 'function') {
+        return jar.getCookieStringSync(url) || '';
     }
 
     let cookies = '';
@@ -83,6 +140,10 @@ function encodeParams(data) {
     }
 
     return params.substring(0, params.length - 1)
+}
+
+function redactLocation(location) {
+    return location.length > 160 ? `${location.slice(0, 160)}…` : location;
 }
 
 

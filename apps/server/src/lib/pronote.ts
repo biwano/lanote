@@ -1,19 +1,13 @@
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const require = createRequire(import.meta.url);
-const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const {
-  loginStudent,
+import {
+  loginStudentFromTgc,
   serializeSession,
   restoreSession,
   errors,
-} = require(path.join(serverRoot, 'pronote-api/index.js')) as typeof import('../types/pronote-api.js');
+  type PronoteSession,
+} from '../../pronote-api-2/index.js';
 
-export { loginStudent, serializeSession, restoreSession, errors };
-
-export type PronoteSession = Awaited<ReturnType<typeof loginStudent>>;
+export { loginStudentFromTgc, serializeSession, restoreSession, errors };
+export type { PronoteSession };
 
 export function getDisplayName(session: PronoteSession): string {
   return session.user?.name ?? 'Élève';
@@ -28,9 +22,13 @@ export function mapPronoteError(error: unknown): string {
 
   switch (code) {
     case errors.WRONG_CREDENTIALS.code:
-      return 'Identifiants incorrects. Vérifie ton nom d\'utilisateur et ton mot de passe.';
+      return 'Identifiants incorrects ou session expirée.';
+    case errors.INVALID_START.code:
+      return 'Impossible de lire la session PRONOTE. Réessaie avec des cookies CAS récents.';
+    case errors.INVALID_TGC.code:
+      return 'Cookies CAS invalides ou expirés. Reconnecte-toi à PRONOTE dans ton navigateur et recopie les cookies.';
     case errors.UNKNOWN_CAS.code:
-      return 'ENT ou CAS inconnu. Vérifie la configuration de connexion.';
+      return 'ENT ou CAS inconnu.';
     case errors.BANNED.code:
       return 'Connexion temporairement bloquée après trop de tentatives.';
     case errors.SESSION_EXPIRED.code:
@@ -40,6 +38,6 @@ export function mapPronoteError(error: unknown): string {
     case errors.CLOSED.code:
       return 'PRONOTE est indisponible pour le moment. Réessaie plus tard.';
     default:
-      return 'Impossible de se connecter à PRONOTE. Vérifie l\'URL et tes identifiants.';
+      return 'Impossible de se connecter à PRONOTE. Vérifie l\'URL et les cookies CAS.';
   }
 }

@@ -3,7 +3,7 @@ import type { PronoteLoginRequest, PronoteLoginResponse, PronoteSessionInfo } fr
 import { getSupabase } from '../lib/supabase.js';
 import {
   getDisplayName,
-  loginStudent,
+  loginStudentFromTgc,
   mapPronoteError,
   serializeSession,
 } from '../lib/pronote.js';
@@ -30,22 +30,29 @@ pronote.post('/login', async (c) => {
     return c.json({ error: 'Requête invalide.' }, 400);
   }
 
-  const { url, username, password, clientId } = body;
-  const cas = body.cas?.trim() || 'none';
+  const url = body.url?.trim();
+  const tgc = body.tgc?.trim();
+  const clientId = body.clientId?.trim() || crypto.randomUUID();
 
-  if (!url?.trim() || !username?.trim() || !password || !clientId?.trim()) {
-    return c.json({ error: 'URL, identifiant, mot de passe et identifiant client sont requis.' }, 400);
+  if (!url) {
+    return c.json({ error: 'L\'URL PRONOTE est requise.' }, 400);
   }
 
+  if (!tgc) {
+    return c.json({ error: 'Les cookies CAS sont requis. Copie-les depuis ton navigateur après connexion à PRONOTE.' }, 400);
+  }
+
+  // Replay browser CAS session: TGC → ticket → eleve.html → Start → PRONOTE API session.
   let session;
   try {
-    session = await loginStudent(url.trim(), username.trim(), password, cas);
+    session = await loginStudentFromTgc(url, tgc);
   } catch (error) {
+    console.error('[pronote-login] API login failed:', error);
     return c.json({ error: mapPronoteError(error) }, 401);
   }
 
   const displayName = getDisplayName(session);
-  const accountHash = hashPronoteAccount(session.server, String(session.user.id));
+  const accountHash = hashPronoteAccount(session.server, String(session.user?.id ?? ''));
   const supabase = getSupabase();
 
   const { data: learner, error: learnerError } = await supabase

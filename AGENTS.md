@@ -19,6 +19,18 @@ French UI examples used throughout (e.g. *Activités du jour*, *J'ai compris*) r
 
 ---
 
+## Code comments
+
+The PRONOTE client reverse-engineers an undocumented protocol (CAS redirects, `Start({…})`, `appelfonction` payloads). **When you touch auth or protocol code, add or extend comments** that explain:
+
+- The HTTP redirect chain or request sequence (reference HAR captures in `docs/agents/` when relevant).
+- What each opaque field means (`h`, `a`, `e`, `f`, TGC, service ticket, etc.).
+- Why a workaround exists (e.g. cookie sanitization, single-use Start tokens).
+
+Prefer comments on non-obvious business logic and protocol details — not on self-explanatory code. Keep comments in English (see Language table). Update comments when the flow changes.
+
+---
+
 ## Vision
 
 The learner views their PRONOTE evaluations and *cahier de texte* (course reports), receives tailored **daily activities**, can upload corrected work for an **AI diagnosis** and a **revision plan** based on **spaced repetition** (neuro-learning). They track progress, indicate whether they understood each session, and set their weekly study time budget.
@@ -33,29 +45,28 @@ The learner views their PRONOTE evaluations and *cahier de texte* (course report
 | UI state | **Pinia** | Session, preferences, short-lived cache |
 | Routing | **Vue Router** | Step / view navigation |
 | Backend | **Hono** (Node.js, TypeScript) | PRONOTE proxy, AI, business logic, secrets |
-| PRONOTE | **`apps/server/pronote-api/`** | Vendored PRONOTE client — auth and requests to the school's PRONOTE instance |
+| PRONOTE | **`apps/server/pronote-api-2/`** | TypeScript PRONOTE client (auth) — native `fetch`; legacy `pronote-api/` kept as reference only |
 | Shared types | **`apps/shared/`** | DTOs and constants imported by web and server (not a package) |
 | Package manager | **pnpm** (workspaces) | Two workspace packages: `@lanote/web`, `@lanote/server` |
 | Database | **Supabase** (PostgreSQL only) | PRONOTE proxy sessions, plans, analyses, feedback, budgets — **backend only** |
 | AI | **OpenRouter** | Work analysis, activity and plan generation |
 
-### PRONOTE client (`apps/server/pronote-api/`)
+### PRONOTE client (`apps/server/pronote-api-2/`)
 
-The upstream npm packages (`pronote-api`, `pronote-api-maintained`, etc.) are **no longer reliably published**. LaNote vendors its own client in `apps/server/pronote-api/`, initially copied from **[Merlode11/pronote-api](https://github.com/Merlode11/pronote-api)** (MIT, fork of EduWireApps/Litarvan). It is a **plain source folder** (no `package.json`); runtime dependencies are declared in `@lanote/server`.
+LaNote uses a **TypeScript rewrite** in `pronote-api-2/` for authentication. It uses native **`fetch`** and an in-memory cookie jar (no axios/jsdom). The old vendored JS client in `pronote-api/` is **not used** by the server anymore — kept only as protocol reference.
 
 | Topic | Decision |
 |-------|----------|
-| **Source** | Import upstream `src/` + entry points; keep attribution and license |
-| **Scope** | Library only (no GraphQL server / `bin/` in production path) |
-| **LaNote extensions** | `serializeSession` / `restoreSession` so `pronote_sessions.session_data` can hydrate a client on each API request (upstream keeps sessions in memory only); **PRONOTE 2025+ protocol** (`Start({a,d,…})`, `fd=1` login page, new `appelfonction` payload shape) |
-| **Usage** | Loaded by `apps/server` at runtime; the browser **never** imports it |
-| **CAS / ENT** | Optional fourth login argument (`cas`) for regional ENT accounts — same as upstream |
+| **Scope (current)** | Auth only: TGC → Start → encrypted `appelfonction` session |
+| **Login** | `loginStudentFromTgc(url, casCookies)` — user copies all CAS cookies from DevTools |
+| **Reference** | `docs/agents/login.har`, `pronote-api/` (legacy) |
+| **Usage** | Imported by `@lanote/server` at runtime; browser never imports it |
 
 See [docs/agents/ARCHITECTURE.md](docs/agents/ARCHITECTURE.md) for session lifecycle and serialization fields.
 
 ### Why a server?
 
-- The PRONOTE protocol ([INDEX ÉDUCATION Service Rest](https://www.index-education.com/fr/serviceRestHP.php#)) is not a documented public REST API; community libraries reverse-engineer the internal protocol and require a server runtime (crypto, sessions, CORS). LaNote uses the vendored client in `apps/server/pronote-api/` (based on [Merlode11/pronote-api](https://github.com/Merlode11/pronote-api)).
+- The PRONOTE protocol ([INDEX ÉDUCATION Service Rest](https://www.index-education.com/fr/serviceRestHP.php#)) is not a documented public REST API; community libraries reverse-engineer the internal protocol and require a server runtime (crypto, sessions, CORS). LaNote uses `apps/server/pronote-api-2/` for auth (legacy `pronote-api/` kept as reference).
 - The **OpenRouter** API key must never be exposed to the browser.
 - **Supabase** is accessed **only by the backend** using the **service role key** — the frontend never connects to Supabase (no `@supabase/supabase-js`, no anon key).
 - Evaluation copies are sent to the backend API for **transient AI analysis only** — files are **not** persisted.
@@ -128,12 +139,12 @@ Target algorithm (refine during implementation):
 
 **Goal**: Allow the learner to connect to their PRONOTE instance.
 
-**UI (French)**: form (URL, username, password; ENT/CAS if needed); *Tester la connexion*, *Enregistrer*.
+**UI (French)**: form with PRONOTE URL + CAS **TGC cookie** (copied from browser DevTools after ENT/EduConnect login); instructions in French; *Tester la connexion*, *Enregistrer*.
 
-**Storage**: `localStorage` key `lanote.pronote.credentials` — **never** Supabase. Stable client UUID for reconnections.
+**Storage**: `localStorage` key `lanote.pronote.credentials` — `{ url, tgc, clientId }` only; **never** Supabase. `tgc` holds all CAS-domain cookies copied from DevTools (TGC, JSESSIONID, …); they expire after a few hours.
 
 **Backend**: `POST /api/pronote/login`, `POST /api/pronote/logout`
-- On login: authenticate via the vendored PRONOTE client (`loginStudent`), upsert `learners`, persist `serializeSession()` output in `pronote_sessions`, return signed `sessionToken`.
+- On login: `loginStudentFromTgc` — GET pronote URL → CAS redirect → replay TGC → ticket → `eleve.html` → extract `Start({…})` → complete PRONOTE session; upsert `learners`, persist `serializeSession()` in `pronote_sessions`, return signed `sessionToken`.
 - On each request: verify `sessionToken`, load session from Supabase, `restoreSession()` → proxy PRONOTE → `UPDATE` row if session mutated (e.g. `request` counter).
 - On logout: call PRONOTE logout if possible, delete `pronote_sessions` row.
 
@@ -256,7 +267,8 @@ lanote/
 ├── apps/
 │   ├── web/                   # Vue 3 + Vite (French UI) — @lanote/web
 │   ├── server/                # Hono API — @lanote/server
-│   │   └── pronote-api/       # Vendored PRONOTE client (plain folder, server-only)
+│   │   ├── pronote-api-2/     # TypeScript PRONOTE client (auth, fetch)
+│   │   └── pronote-api/       # Legacy JS client (reference only)
 │   └── shared/                # Shared TS types & constants (plain folder, imported relatively)
 └── supabase/
     └── migrations/
@@ -273,7 +285,7 @@ pnpm --filter @lanote/server dev   # API, e.g. port 3001
 pnpm --filter @lanote/web dev      # Vite, e.g. port 5173, proxy /api → 3001
 ```
 
-**PRONOTE demo instance** (manual testing): `https://demo.index-education.net/pronote/` — identifiant `demonstration`, mot de passe `pronotevs`, ENT/CAS laisser vide (`none`).
+**PRONOTE demo instance** (manual testing): `https://demo.index-education.net/pronote/` — log in via browser, copy `Start({…})` from page source.
 
 ---
 

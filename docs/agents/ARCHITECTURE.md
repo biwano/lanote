@@ -99,7 +99,9 @@ Upstream sessions live in process memory. For stateless serverless hosting, add:
 | `serializeSession(session)` | JSON-safe snapshot after login or PRONOTE call |
 | `restoreSession(data)` | Reconstruct `PronoteSession` before proxying |
 
-**PRONOTE 2025+ protocol** (e.g. demo site, recent school instances): login HTML uses `?fd=1&login=true` and `Start({h, a, d, …})`. API calls use `appelfonction/{a}/{h}/{order}` with body `{ session, no, id, dataSec }` instead of the legacy `{ nom, numeroOrdre, donneesSec }` shape. The vendored client detects `Start.a` and switches automatically; `session_data` must persist `appKey` and `httpMode`.
+**PRONOTE 2025+ protocol** (recent school instances): login HTML uses `?fd=1&login=true` and `Start({h, a, d, …})`. API calls use `appelfonction/{a}/{h}/{order}` with body `{ session, no, id, dataSec }` instead of the legacy `{ nom, numeroOrdre, donneesSec }` shape. The vendored client detects `Start.a` and switches automatically; `session_data` must persist `appKey` and `httpMode`.
+
+**SSO rewrite (2026)**: login was rebuilt from `docs/agents/connexion.har` (EduConnect → CAS Haute-Garonne). Active code lives in `src/sso/` and `src/auth/start.js`; the Merlode11 snapshot before rewrite is in `_reference/`. EduConnect now uses `j_username` / `j_password` and a two-step flow (credentials → local-storage consent → SAMLResponse to CAS). Regional handlers such as `haute-garonne` route through EduConnect SAML, not direct CAS password forms.
 
 Minimum persisted fields (jsonb in `pronote_sessions.session_data`):
 

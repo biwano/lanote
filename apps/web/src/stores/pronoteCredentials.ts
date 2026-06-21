@@ -4,6 +4,10 @@ import {
   type PronoteCredentials,
 } from '../../../shared/index';
 
+function createClientId(): string {
+  return crypto.randomUUID();
+}
+
 function readStoredCredentials(): PronoteCredentials | null {
   const raw = localStorage.getItem(PRONOTE_CREDENTIALS_KEY);
   if (!raw) {
@@ -11,25 +15,30 @@ function readStoredCredentials(): PronoteCredentials | null {
   }
 
   try {
-    return JSON.parse(raw) as PronoteCredentials;
+    const parsed = JSON.parse(raw) as Partial<PronoteCredentials> & { startPayload?: string };
+    if (!parsed.url) {
+      return null;
+    }
+    return {
+      clientId: parsed.clientId || createClientId(),
+      url: parsed.url,
+      tgc: parsed.tgc ?? '',
+    };
   } catch {
     localStorage.removeItem(PRONOTE_CREDENTIALS_KEY);
     return null;
   }
 }
 
-function createClientId(): string {
-  return crypto.randomUUID();
-}
-
 export const usePronoteCredentialsStore = defineStore('pronoteCredentials', {
-  state: () => ({
-    clientId: readStoredCredentials()?.clientId ?? createClientId(),
-    url: readStoredCredentials()?.url ?? '',
-    username: readStoredCredentials()?.username ?? '',
-    password: readStoredCredentials()?.password ?? '',
-    cas: readStoredCredentials()?.cas ?? '',
-  }),
+  state: () => {
+    const stored = readStoredCredentials();
+    return {
+      clientId: stored?.clientId ?? createClientId(),
+      url: stored?.url ?? '',
+      tgc: stored?.tgc ?? '',
+    };
+  },
 
   actions: {
     loadFromStorage() {
@@ -40,20 +49,17 @@ export const usePronoteCredentialsStore = defineStore('pronoteCredentials', {
 
       this.clientId = stored.clientId;
       this.url = stored.url;
-      this.username = stored.username;
-      this.password = stored.password;
-      this.cas = stored.cas ?? '';
+      this.tgc = stored.tgc;
     },
 
     saveToStorage() {
       const payload: PronoteCredentials = {
-        clientId: this.clientId,
+        clientId: this.clientId || createClientId(),
         url: this.url.trim(),
-        username: this.username.trim(),
-        password: this.password,
-        cas: this.cas.trim() || undefined,
+        tgc: this.tgc.trim(),
       };
 
+      this.clientId = payload.clientId;
       localStorage.setItem(PRONOTE_CREDENTIALS_KEY, JSON.stringify(payload));
     },
 
