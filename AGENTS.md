@@ -95,7 +95,7 @@ See **[docs/agents/ARCHITECTURE.md](docs/agents/ARCHITECTURE.md)** for system di
 
 ```
 learners
-  id, pronote_account_hash, display_name, created_at
+  id, pronote_server, pronote_user_name, pronote_account_hash, display_name, created_at
 
 pronote_sessions
   id, learner_id, session_data (jsonb), expires_at, created_at, updated_at
@@ -139,12 +139,12 @@ Target algorithm (refine during implementation):
 
 **Goal**: Allow the learner to connect to their PRONOTE instance.
 
-**UI (French)**: form with PRONOTE URL + CAS **TGC cookie** (copied from browser DevTools after ENT/EduConnect login); instructions in French; *Tester la connexion*, *Enregistrer*.
+**UI (French)**: form with PRONOTE URL + CAS cookies (copied from browser DevTools after ENT/EduConnect login); instructions in French; *Tester la connexion*, *Enregistrer*. On page load, pre-fill URL and cookies from `localStorage` when present.
 
-**Storage**: `localStorage` key `lanote.pronote.credentials` — `{ url, tgc, clientId }` only; **never** Supabase. `tgc` holds all CAS-domain cookies copied from DevTools (TGC, JSESSIONID, …); they expire after a few hours.
+**Storage**: `localStorage` key `lanote.pronote.credentials` — `{ url, tgc, clientId }` only; **never** Supabase. `tgc` holds all CAS-domain cookies copied from DevTools (TGC, JSESSIONID, …); they expire after a few hours. On every **successful** connection (*Tester la connexion* or *Enregistrer*), persist the current URL and cookies so the form defaults are restored on the next visit.
 
 **Backend**: `POST /api/pronote/login`, `POST /api/pronote/logout`
-- On login: `loginStudentFromTgc` — GET pronote URL → CAS redirect → replay TGC → ticket → `eleve.html` → extract `Start({…})` → complete PRONOTE session; upsert `learners`, persist `serializeSession()` in `pronote_sessions`, return signed `sessionToken`.
+- On login: `loginStudentFromTgc` — GET pronote URL → CAS redirect → replay TGC → ticket → `eleve.html` → extract `Start({…})` → complete PRONOTE session; upsert `learners` on **`pronote_server` + `pronote_user_name`** (normalized instance URL + PRONOTE `ParametresUtilisateur.ressource.L`), persist `serializeSession()` in `pronote_sessions`, return signed `sessionToken`. `pronote_account_hash` is a derived SHA-256 of server + user name.
 - On each request: verify `sessionToken`, load session from Supabase, `restoreSession()` → proxy PRONOTE → `UPDATE` row if session mutated (e.g. `request` counter).
 - On logout: call PRONOTE logout if possible, delete `pronote_sessions` row.
 
@@ -152,6 +152,7 @@ Target algorithm (refine during implementation):
 - [x] Successful login displays learner name
 - [x] Credentials persist across reload
 - [x] Clear French error on invalid credentials
+- [x] Same PRONOTE student reconnecting reuses one `learners` row (upsert on `pronote_server` + `pronote_user_name`)
 
 ---
 
@@ -295,7 +296,7 @@ pnpm --filter @lanote/web dev      # Vite, e.g. port 5173, proxy /api → 3001
 - PRONOTE proxy session state lives in `pronote_sessions` (backend read/write only); treat `session_data` as sensitive.
 - `sessionToken` sent by the client is a signed reference (via `PRONOTE_SESSION_SECRET`), not the raw PRONOTE cookies.
 - **Supabase service role key**: backend only; never shipped to the frontend or exposed in client env vars.
-- Frontend talks **only** to the Hono API; the backend enforces learner scoping (via PRONOTE session / `pronote_account_hash`).
+- Frontend talks **only** to the Hono API; the backend enforces learner scoping (via PRONOTE session → `learners` row, keyed by `pronote_server` + `pronote_user_name`).
 - Minimise minors' data; do not duplicate PRONOTE grades; do not persist evaluation copies.
 - GDPR: delete analyses and plans via backend API → Supabase.
 

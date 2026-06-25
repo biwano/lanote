@@ -22,7 +22,7 @@ async function testConnection() {
   testStatus.value = 'idle';
 
   try {
-    await session.login(false);
+    await session.login();
     testStatus.value = 'success';
     testMessage.value = `Connexion réussie — bonjour ${session.displayName} !`;
   } catch (error) {
@@ -37,7 +37,7 @@ async function saveAndConnect() {
   testStatus.value = 'idle';
 
   try {
-    await session.login(true);
+    await session.login();
     testStatus.value = 'success';
     testMessage.value = 'Identifiants enregistrés et connexion établie.';
   } catch {

@@ -8,7 +8,10 @@ import {
   serializeSession,
 } from '../lib/pronote.js';
 import {
-  hashPronoteAccount,
+  getPronoteLearnerIdentity,
+  MissingPronoteUserNameError,
+} from '../lib/learner-identity.js';
+import {
   sessionExpiresAt,
   signSessionToken,
 } from '../lib/session-token.js';
@@ -52,18 +55,30 @@ pronote.post('/login', async (c) => {
   }
 
   const displayName = getDisplayName(session);
-  const accountHash = hashPronoteAccount(session.server, String(session.user?.id ?? ''));
+
+  let identity;
+  try {
+    identity = getPronoteLearnerIdentity(session);
+  } catch (error) {
+    if (error instanceof MissingPronoteUserNameError) {
+      return c.json({ error: 'Impossible d\'identifier le compte PRONOTE.' }, 500);
+    }
+    throw error;
+  }
+
   const supabase = getSupabase();
 
   const { data: learner, error: learnerError } = await supabase
     .from('learners')
     .upsert(
       {
-        pronote_account_hash: accountHash,
+        pronote_server: identity.server,
+        pronote_user_name: identity.userName,
+        pronote_account_hash: identity.accountHash,
         display_name: displayName,
         client_id: clientId.trim(),
       },
-      { onConflict: 'pronote_account_hash' },
+      { onConflict: 'pronote_server,pronote_user_name' },
     )
     .select('id')
     .single();

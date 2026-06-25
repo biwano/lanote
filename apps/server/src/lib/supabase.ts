@@ -2,6 +2,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export interface LearnerRow {
   id: string;
+  pronote_server: string | null;
+  pronote_user_name: string | null;
   pronote_account_hash: string;
   display_name: string;
   client_id: string | null;

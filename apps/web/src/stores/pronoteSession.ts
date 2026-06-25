@@ -77,7 +77,7 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
       };
     },
 
-    async login(saveCredentials: boolean) {
+    async login() {
       const credentials = usePronoteCredentialsStore();
       this.status = 'loading';
       this.errorMessage = '';
@@ -88,10 +88,7 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
         this.displayName = result.displayName;
         this.status = 'connected';
         this.persistSession();
-
-        if (saveCredentials) {
-          credentials.saveToStorage();
-        }
+        credentials.saveToStorage();
       } catch (error) {
         this.status = 'error';
         this.errorMessage = error instanceof Error ? error.message : 'Connexion impossible.';
@@ -127,7 +124,7 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
       }
 
       try {
-        await this.login(false);
+        await this.login();
       } catch {
         // Error message already set by login().
       }

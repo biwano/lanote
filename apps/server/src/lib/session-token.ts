@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -28,12 +28,6 @@ export async function verifySessionToken(token: string): Promise<string> {
   }
 
   return sessionId;
-}
-
-export function hashPronoteAccount(server: string, userId: string): string {
-  return createHash('sha256')
-    .update(`${server.trim().toLowerCase()}:${userId}`)
-    .digest('hex');
 }
 
 export function sessionExpiresAt(): string {

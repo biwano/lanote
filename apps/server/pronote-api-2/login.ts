@@ -37,7 +37,7 @@ async function completeSessionFromStart(
   }
 
   session.user = await getUser(session);
-  step('login.complete', { name: session.user?.name });
+  step('login.complete', { name: session.user?.name, userId: session.user?.id });
   return session;
 }
 

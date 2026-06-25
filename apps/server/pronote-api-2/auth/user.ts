@@ -7,7 +7,7 @@ export async function getUser(session: PronoteSession): Promise<PronoteUser> {
   const res = user.ressource ?? {};
 
   return {
-    id: res.N ?? '',
-    name: res.L,
+    id: res.N != null && String(res.N).trim() !== '' ? String(res.N).trim() : '',
+    name: typeof res.L === 'string' ? res.L : undefined,
   };
 }

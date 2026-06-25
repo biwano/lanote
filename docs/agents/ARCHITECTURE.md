@@ -158,7 +158,7 @@ Do **not** persist `setKeepAlive` timers; call `setKeepAlive(true)` after restor
 
 **Supabase client**: `@supabase/supabase-js` initialised **only** in the server with `SUPABASE_SERVICE_ROLE_KEY`. No anon key is used.
 
-**Learner identity**: resolved server-side from the PRONOTE session (`pronote_account_hash` → `learners` row). The frontend never authenticates against Supabase.
+**Learner identity**: resolved server-side from the PRONOTE session (`pronote_server` + `pronote_user_name` → `learners` row). The frontend never authenticates against Supabase.
 
 **Authorization**: the backend scopes every query to the current learner. RLS may exist as defense in depth, but access control is enforced in application code (service role bypasses RLS).
 
