@@ -3,10 +3,27 @@ import {
   serializeSession,
   restoreSession,
   errors,
+  fetchEvaluations,
+  fetchCahierTexte,
+  defaultDateRange,
+  endOfDay,
+  parseIsoDate,
+  startOfDay,
   type PronoteSession,
 } from '../../pronote-api-2/index.js';
 
-export { loginStudentFromTgc, serializeSession, restoreSession, errors };
+export {
+  loginStudentFromTgc,
+  serializeSession,
+  restoreSession,
+  errors,
+  fetchEvaluations,
+  fetchCahierTexte,
+  defaultDateRange,
+  endOfDay,
+  parseIsoDate,
+  startOfDay,
+};
 export type { PronoteSession };
 
 export function getDisplayName(session: PronoteSession): string {

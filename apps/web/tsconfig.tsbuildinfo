@@ -1,1 +1,1 @@
-{"root":["./src/main.ts","./src/vite-env.d.ts","./src/api/client.ts","./src/router/index.ts","./src/stores/pronoteCredentials.ts","./src/stores/pronoteSession.ts","./src/App.vue","./src/views/PronoteConnectView.vue"],"version":"5.9.3"}
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/api/client.ts","./src/api/pronote.ts","./src/router/index.ts","./src/stores/evaluations.ts","./src/stores/pronoteCredentials.ts","./src/stores/pronoteSession.ts","./src/App.vue","./src/views/PronoteConnectView.vue","./src/views/TodayView.vue"],"version":"5.9.3"}

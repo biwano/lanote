@@ -5,11 +5,11 @@ import type {
   PronoteSessionInfo,
 } from '../../../shared/index';
 
-async function parseJson<T>(response: Response): Promise<T> {
+export async function parseJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     headers: {
       'Content-Type': 'application/json',

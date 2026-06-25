@@ -1,56 +1,34 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { usePronoteCredentialsStore } from '../stores/pronoteCredentials';
 import { usePronoteSessionStore } from '../stores/pronoteSession';
 
 const credentials = usePronoteCredentialsStore();
 const session = usePronoteSessionStore();
+const router = useRouter();
 const { url, tgc } = storeToRefs(credentials);
 const { displayName, isConnected, status, errorMessage } = storeToRefs(session);
 
-const testMessage = ref('');
-const testStatus = ref<'idle' | 'success' | 'error'>('idle');
+const feedbackMessage = ref('');
+const feedbackStatus = ref<'idle' | 'success' | 'error'>('idle');
 
-onMounted(async () => {
-  credentials.loadFromStorage();
-  await session.restoreFromStorage();
-});
-
-async function testConnection() {
-  testMessage.value = '';
-  testStatus.value = 'idle';
+async function connect() {
+  feedbackMessage.value = '';
+  feedbackStatus.value = 'idle';
 
   try {
     await session.login();
-    testStatus.value = 'success';
-    testMessage.value = `Connexion réussie — bonjour ${session.displayName} !`;
-  } catch (error) {
-    testStatus.value = 'error';
-    testMessage.value = error instanceof Error ? error.message : 'Connexion impossible.';
-    session.clearSession();
-  }
-}
-
-async function saveAndConnect() {
-  testMessage.value = '';
-  testStatus.value = 'idle';
-
-  try {
-    await session.login();
-    testStatus.value = 'success';
-    testMessage.value = 'Identifiants enregistrés et connexion établie.';
+    feedbackStatus.value = 'success';
+    feedbackMessage.value = `Connexion réussie — bonjour ${session.displayName} !`;
+    await router.push('/aujourd-hui');
   } catch {
-    testStatus.value = 'error';
-    testMessage.value = session.errorMessage;
+    feedbackStatus.value = 'error';
+    feedbackMessage.value = session.errorMessage;
   }
 }
 
-async function disconnect() {
-  await session.logout();
-  testMessage.value = '';
-  testStatus.value = 'idle';
-}
 </script>
 
 <template>
@@ -60,7 +38,7 @@ async function disconnect() {
       Connecte-toi d'abord à PRONOTE dans ton navigateur (EduConnect, ENT…), puis copie les cookies CAS ci-dessous.
     </p>
 
-    <form class="form" @submit.prevent="saveAndConnect">
+    <form class="form" @submit.prevent="connect">
       <label>
         URL PRONOTE
         <input v-model="url" type="url" required placeholder="https://…/pronote/" autocomplete="url" />
@@ -91,21 +69,18 @@ async function disconnect() {
       </label>
 
       <div class="actions">
-        <button type="button" class="secondary" :disabled="status === 'loading'" @click="testConnection">
-          Tester la connexion
-        </button>
         <button type="submit" class="primary" :disabled="status === 'loading'">
-          Enregistrer
+          Se connecter
         </button>
       </div>
     </form>
 
-    <p v-if="testMessage" class="feedback" :class="testStatus">{{ testMessage }}</p>
+    <p v-if="feedbackMessage" class="feedback" :class="feedbackStatus">{{ feedbackMessage }}</p>
     <p v-else-if="errorMessage && !isConnected" class="feedback error">{{ errorMessage }}</p>
 
     <div v-if="isConnected" class="connected">
       <p>Connecté en tant que <strong>{{ displayName }}</strong></p>
-      <button type="button" class="secondary" @click="disconnect">Se déconnecter</button>
+      <p class="lead">Utilise la barre de navigation en haut pour accéder à <strong>Aujourd'hui</strong> ou te déconnecter.</p>
     </div>
   </section>
 </template>

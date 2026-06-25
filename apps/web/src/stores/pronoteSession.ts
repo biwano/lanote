@@ -29,12 +29,19 @@ function readStoredSession(): StoredSession | null {
   }
 }
 
+const storedSession = readStoredSession();
+
 export const usePronoteSessionStore = defineStore('pronoteSession', {
   state: () => ({
-    sessionToken: readStoredSession()?.sessionToken ?? '',
-    displayName: readStoredSession()?.displayName ?? '',
-    status: 'idle' as 'idle' | 'loading' | 'connected' | 'error',
+    sessionToken: storedSession?.sessionToken ?? '',
+    displayName: storedSession?.displayName ?? '',
+    status: (storedSession?.sessionToken ? 'loading' : 'idle') as
+      | 'idle'
+      | 'loading'
+      | 'connected'
+      | 'error',
     errorMessage: '',
+    restored: false,
   }),
 
   getters: {
@@ -96,8 +103,22 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
       }
     },
 
+    async ensureRestored() {
+      if (this.restored) {
+        return;
+      }
+
+      await this.restoreFromStorage();
+    },
+
     async restoreFromStorage() {
+      if (this.restored) {
+        return;
+      }
+
       if (!this.sessionToken) {
+        this.restored = true;
+        await this.loginWithSavedCredentials();
         return;
       }
 
@@ -112,6 +133,8 @@ export const usePronoteSessionStore = defineStore('pronoteSession', {
       } catch {
         this.clearSession();
         await this.loginWithSavedCredentials();
+      } finally {
+        this.restored = true;
       }
     },
 

@@ -1,11 +1,23 @@
 import { Hono } from 'hono';
-import type { PronoteLoginRequest, PronoteLoginResponse, PronoteSessionInfo } from '../../../shared/index.js';
+import type {
+  PronoteLoginRequest,
+  PronoteLoginResponse,
+  PronoteSessionInfo,
+  PronoteEvaluationsResponse,
+  CahierTexteResponse,
+} from '../../../shared/index.js';
 import { getSupabase } from '../lib/supabase.js';
 import {
   getDisplayName,
   loginStudentFromTgc,
   mapPronoteError,
   serializeSession,
+  fetchEvaluations,
+  fetchCahierTexte,
+  defaultDateRange,
+  endOfDay,
+  parseIsoDate,
+  startOfDay,
 } from '../lib/pronote.js';
 import {
   getPronoteLearnerIdentity,
@@ -20,6 +32,7 @@ import {
   requirePronoteSession,
   type PronoteAuthVariables,
 } from '../middleware/pronote-session.js';
+import { cacheKey, getCached, setCached } from '../lib/pronote-cache.js';
 
 type LoginBody = PronoteLoginRequest;
 
@@ -150,6 +163,59 @@ pronote.get('/session', requirePronoteSession, async (c) => {
   };
 
   return c.json(response);
+});
+
+function parseDateRangeQuery(c: { req: { query: (name: string) => string | undefined } }): { from: Date; to: Date } {
+  const defaults = defaultDateRange();
+  const from = startOfDay(parseIsoDate(c.req.query('from'), defaults.from));
+  const to = endOfDay(parseIsoDate(c.req.query('to'), defaults.to));
+  return from <= to ? { from, to } : { from: defaults.from, to: defaults.to };
+}
+
+pronote.get('/evaluations', requirePronoteSession, async (c) => {
+  const sessionId = c.get('pronoteSessionId');
+  const row = c.get('pronoteSessionRow');
+  const client = c.get('pronoteClient');
+  const { from, to } = parseDateRangeQuery(c);
+  const key = cacheKey(sessionId, 'evaluations', from.toISOString(), to.toISOString());
+
+  const cached = getCached<PronoteEvaluationsResponse>(key);
+  if (cached) return c.json(cached);
+
+  try {
+    const subjects = await fetchEvaluations(client, from, to);
+    await persistPronoteSessionIfChanged(sessionId, row.session_data, client);
+
+    const response: PronoteEvaluationsResponse = { subjects: subjects ?? [] };
+    setCached(key, response);
+    return c.json(response);
+  } catch (error) {
+    console.error('[pronote-evaluations] fetch failed:', error);
+    return c.json({ error: mapPronoteError(error) }, 502);
+  }
+});
+
+pronote.get('/cahier-texte', requirePronoteSession, async (c) => {
+  const sessionId = c.get('pronoteSessionId');
+  const row = c.get('pronoteSessionRow');
+  const client = c.get('pronoteClient');
+  const { from, to } = parseDateRangeQuery(c);
+  const key = cacheKey(sessionId, 'cahier-texte', from.toISOString(), to.toISOString());
+
+  const cached = getCached<CahierTexteResponse>(key);
+  if (cached) return c.json(cached);
+
+  try {
+    const entries = await fetchCahierTexte(client, from, to);
+    await persistPronoteSessionIfChanged(sessionId, row.session_data, client);
+
+    const response: CahierTexteResponse = { entries: entries ?? [] };
+    setCached(key, response);
+    return c.json(response);
+  } catch (error) {
+    console.error('[pronote-cahier-texte] fetch failed:', error);
+    return c.json({ error: mapPronoteError(error) }, 502);
+  }
 });
 
 export default pronote;

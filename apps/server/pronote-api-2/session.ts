@@ -22,6 +22,8 @@ export function getAccountType(type: string): AccountType {
 export interface PronoteUser {
   id: string | number;
   name?: string;
+  /** Tab IDs hidden for this account (listeOngletsInvisibles). */
+  hiddenTabs?: number[];
   [key: string]: unknown;
 }
 
@@ -36,7 +38,7 @@ export interface PronoteSession {
   aesKey?: unknown;
   aesIV?: unknown;
   publicKey?: unknown;
-  params?: Record<string, unknown>;
+  params?: import('./auth/params.js').PronoteSessionParams;
   user?: PronoteUser;
   request: number;
   logout: () => Promise<void>;

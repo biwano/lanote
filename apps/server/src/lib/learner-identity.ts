@@ -29,7 +29,7 @@ export function getPronoteLearnerIdentity(session: PronoteSession): PronoteLearn
   }
 
   const server = normalizeServer(session.server);
-  const userName = session.user.name?.trim() ?? '';
+  const userName = session.user.name.trim();
 
 
   return {

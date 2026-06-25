@@ -20,6 +20,44 @@ export interface PronoteSessionInfo {
   displayName: string;
 }
 
+export interface EvaluationLevel {
+  name: string;
+  value: { short: string; long: string };
+}
+
+export interface EvaluationItem {
+  id: string;
+  name: string;
+  date: string;
+  coefficient: number;
+  levels: EvaluationLevel[];
+}
+
+export interface SubjectEvaluations {
+  name: string;
+  teacher: string;
+  color?: number;
+  evaluations: EvaluationItem[];
+}
+
+export interface PronoteEvaluationsResponse {
+  subjects: SubjectEvaluations[];
+}
+
+export interface CahierTexteEntry {
+  id: string;
+  subject: string;
+  teachers: string[];
+  from: string;
+  to: string;
+  description: string;
+  category: string;
+}
+
+export interface CahierTexteResponse {
+  entries: CahierTexteEntry[];
+}
+
 export interface ApiErrorBody {
   error: string;
 }

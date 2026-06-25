@@ -139,9 +139,9 @@ Target algorithm (refine during implementation):
 
 **Goal**: Allow the learner to connect to their PRONOTE instance.
 
-**UI (French)**: form with PRONOTE URL + CAS cookies (copied from browser DevTools after ENT/EduConnect login); instructions in French; *Tester la connexion*, *Enregistrer*. On page load, pre-fill URL and cookies from `localStorage` when present.
+**UI (French)**: top navigation bar (sticky) with *LaNote* branding; when connected, links *Aujourd'hui* and *Connexion*, learner display name, and *Déconnexion* (calls `POST /api/pronote/logout`, clears session, redirects to home). Connection form with PRONOTE URL + CAS cookies (copied from browser DevTools after ENT/EduConnect login); instructions in French; *Se connecter*. On page load, pre-fill URL and cookies from `localStorage` when present.
 
-**Storage**: `localStorage` key `lanote.pronote.credentials` — `{ url, tgc, clientId }` only; **never** Supabase. `tgc` holds all CAS-domain cookies copied from DevTools (TGC, JSESSIONID, …); they expire after a few hours. On every **successful** connection (*Tester la connexion* or *Enregistrer*), persist the current URL and cookies so the form defaults are restored on the next visit.
+**Storage**: `localStorage` key `lanote.pronote.credentials` — `{ url, tgc, clientId }` only; **never** Supabase. `tgc` holds all CAS-domain cookies copied from DevTools (TGC, JSESSIONID, …); they expire after a few hours. On every **successful** connection (*Se connecter*), persist the current URL and cookies so the form defaults are restored on the next visit. Session continuity uses `lanote.pronote.session` — `{ sessionToken, displayName }`; on every page load the app calls `GET /api/pronote/session` to validate the token, and falls back to a fresh login with saved CAS cookies when the server session is gone.
 
 **Backend**: `POST /api/pronote/login`, `POST /api/pronote/logout`
 - On login: `loginStudentFromTgc` — GET pronote URL → CAS redirect → replay TGC → ticket → `eleve.html` → extract `Start({…})` → complete PRONOTE session; upsert `learners` on **`pronote_server` + `pronote_user_name`** (normalized instance URL + PRONOTE `ParametresUtilisateur.ressource.L`), persist `serializeSession()` in `pronote_sessions`, return signed `sessionToken`. `pronote_account_hash` is a derived SHA-256 of server + user name.
@@ -151,6 +151,7 @@ Target algorithm (refine during implementation):
 **Acceptance criteria**
 - [x] Successful login displays learner name
 - [x] Credentials persist across reload
+- [x] Session persists across reload (`sessionToken` in `localStorage`, restored at app startup)
 - [x] Clear French error on invalid credentials
 - [x] Same PRONOTE student reconnecting reuses one `learners` row (upsert on `pronote_server` + `pronote_user_name`)
 
@@ -160,16 +161,16 @@ Target algorithm (refine during implementation):
 
 **Goal**: Display recent evaluations and course session reports.
 
-**UI (French)**: *Aujourd'hui*, *Cahier de texte*, *Actualiser*.
+**UI (French)**: global nav (*Aujourd'hui*, *Connexion*, *Déconnexion*); page *Aujourd'hui* with *Cahier de texte* section and *Actualiser*.
 
 **Backend**: `GET /api/pronote/evaluations?from=&to=`, `GET /api/pronote/cahier-texte?from=&to=`
 
 **Data**: 100% PRONOTE; optional 5–15 min server cache; no Supabase writes.
 
 **Acceptance criteria**
-- [ ] Grades match PRONOTE for current period
-- [ ] *Cahier de texte* shows subject, content, date, teacher
-- [ ] Empty states handled
+- [x] Grades match PRONOTE for current period
+- [x] *Cahier de texte* shows subject, content, date, teacher
+- [x] Empty states handled
 
 ---
 
